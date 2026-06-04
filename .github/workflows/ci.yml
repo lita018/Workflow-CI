@@ -62,16 +62,14 @@ jobs:
       - name: Get latest MLflow run_id
         working-directory: MLProject
         run: |
+          # Mengambil Run ID terakhir dari history local mlruns default (.mlfiles)
           RUN_ID=$(python -c "
           import mlflow
-          import os
-          mlflow.set_tracking_uri(os.environ['MLFLOW_TRACKING_URI'])
           client = mlflow.tracking.MlflowClient()
-          exp = client.get_experiment_by_name('Heart Disease - CI Pipeline')
-          if exp:
-              runs = client.search_runs([exp.experiment_id], order_by=['start_time DESC'], max_results=1)
-              if runs:
-                  print(runs[0].info.run_id)
+          # Ambil semua run di eksperimen default (0)
+          runs = client.search_runs(experiment_ids=['0'], order_by=['start_time DESC'], max_results=1)
+          if runs:
+              print(runs[0].info.run_id)
           ")
           echo "Latest Run ID: $RUN_ID"
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
