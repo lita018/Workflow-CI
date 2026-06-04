@@ -81,17 +81,11 @@ jobs:
           name: ml-artifacts
           path: MLProject/artifacts/
 
-      # 9. Build Docker Model (Advanced)
+      # 9. Build Docker Model menggunakan Dockerfile Kustom
       - name: Build Docker Model
         working-directory: MLProject
-        env:
-          RUN_ID: ${{ env.RUN_ID }}
         run: |
-          if [ -n "$RUN_ID" ]; then
-            mlflow models build-docker --model-uri "runs:/$RUN_ID/model" --name "heart-disease-model" --enable-mlserver
-          else
-            echo "No run ID found, skipping Docker build"
-          fi
+          docker build -t heart-disease-model .
 
       # 10. Login to Docker Hub
       - name: Log in to Docker Hub
