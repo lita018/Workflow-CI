@@ -81,32 +81,32 @@ jobs:
           name: ml-artifacts
           path: MLProject/artifacts/
 
-      # 10. Build Docker Model (Advanced)
+      # 9. Build Docker Model (Advanced)
       - name: Build Docker Model
         working-directory: MLProject
         env:
           RUN_ID: ${{ env.RUN_ID }}
         run: |
           if [ -n "$RUN_ID" ]; then
-            mlflow models build-docker --model-uri "runs:/$RUN_ID/model" --name "heart-disease-model" --enable-mlserver
+            mlflow models build-docker --model-uri "runs:/$RUN_ID/model" --name "heart-disease-model" --enable-mlserver --python-version 3.12
           else
             echo "No run ID found, skipping Docker build"
           fi
 
-      # 11. Login to Docker Hub
+      # 10. Login to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 12. Tag Docker Image
+      # 11. Tag Docker Image
       - name: Tag Docker Image
         run: |
           docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
           docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:${{ github.run_number }}
           
-      # 13. Push Docker Image
+      # 12. Push Docker Image
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
