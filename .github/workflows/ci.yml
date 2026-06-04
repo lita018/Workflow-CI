@@ -52,10 +52,6 @@ jobs:
       - name: Run mlflow project
         working-directory: MLProject
         run: |
-          # 6. Run MLflow Project
-      - name: Run mlflow project
-        working-directory: MLProject
-        run: |
           mlflow run . --env-manager=local -P n_estimators=100 -P max_depth=10 -P min_samples_split=2 -P min_samples_leaf=1 -P data_dir=heart_disease_preprocessing
 
       # 7. Get latest MLflow run_id
@@ -76,58 +72,14 @@ jobs:
           echo "Latest Run ID: $RUN_ID"
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
 
-      # 8. Install Python dependencies for upload
-      - name: Install Python dependencies
-        run: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
-
-      # 9. Upload artifacts to Google Drive
-      - name: Upload to Google Drive
-        env:
-          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
-        run: |
-          python - <<'EOF'
-          import os
-          import json
-          import glob
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
-
-          creds_data = json.loads(os.environ['GDRIVE_CREDENTIALS'])
-          creds = service_account.Credentials.from_service_account_info(
-              creds_data,
-              scopes=['https://www.googleapis.com/auth/drive.file']
-          )
-          service = build('drive', 'v3', credentials=creds)
-
-          # Create folder
-          folder_meta = {
-              'name': f"heart-disease-artifacts-{os.environ.get('GITHUB_RUN_NUMBER', 'local')}",
-              'mimeType': 'application/vnd.google-apps.folder'
-          }
-          folder = service.files().create(body=folder_meta, fields='id').execute()
-          folder_id = folder.get('id')
-          print(f"Folder created: {folder_id}")
-
-          # Upload artifact files
-          artifact_files = glob.glob('MLProject/artifacts/**/*', recursive=True)
-          for filepath in artifact_files:
-              if os.path.isfile(filepath):
-                  media = MediaFileUpload(filepath)
-                  file_meta = {'name': os.path.basename(filepath), 'parents': [folder_id]}
-                  # Tambahkan supportsAllDrives=True agar file dihitung ke kuota folder utama kamu
-                  service.files().create(
-                      body=file_meta, 
-                      media_body=media, 
-                      fields='id',
-                      supportsAllDrives=True
-                  ).execute()
-                  print(f"Uploaded: {filepath}")
-
-          print("Upload selesai!")
-          EOF
-
-      # 10. Build Docker Model (Advanced)
+      # 8. Upload Artifacts to GitHub
+      - name: Upload Artifacts to GitHub
+        uses: actions/upload-artifact@v3
+        with:
+          name: ml-artifacts
+          path: MLProject/artifacts/
+          
+      # 9. Build Docker Model (Advanced)
       - name: Build Docker Model
         working-directory: MLProject
         env:
@@ -139,20 +91,20 @@ jobs:
             echo "No run ID found, skipping Docker build"
           fi
 
-      # 11. Login to Docker Hub
+      # 10. Login to Docker Hub
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 12. Tag Docker Image
+      # 11. Tag Docker Image
       - name: Tag Docker Image
         run: |
           docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
           docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:${{ github.run_number }}
           
-      # 13. Push Docker Image
+      # 12. Push Docker Image
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
