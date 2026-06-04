@@ -115,7 +115,13 @@ jobs:
               if os.path.isfile(filepath):
                   media = MediaFileUpload(filepath)
                   file_meta = {'name': os.path.basename(filepath), 'parents': [folder_id]}
-                  service.files().create(body=file_meta, media_body=media, fields='id').execute()
+                  # Tambahkan supportsAllDrives=True agar file dihitung ke kuota folder utama kamu
+                  service.files().create(
+                      body=file_meta, 
+                      media_body=media, 
+                      fields='id',
+                      supportsAllDrives=True
+                  ).execute()
                   print(f"Uploaded: {filepath}")
 
           print("Upload selesai!")
