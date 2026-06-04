@@ -71,7 +71,11 @@ def train(args):
     # Setup MLflow
     mlflow.set_experiment("Heart Disease - CI Pipeline")
 
-    with mlflow.start_run():
+    # Ambil run yang sudah aktif dari 'mlflow run', jika tidak ada baru buat baru
+    active_run = mlflow.active_run()
+    run_context = mlflow.start_run(nested=True) if active_run else mlflow.start_run()
+
+    with run_context:
         # Log params
         mlflow.log_param("n_estimators", args.n_estimators)
         mlflow.log_param("max_depth", max_depth)

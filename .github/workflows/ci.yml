@@ -52,7 +52,11 @@ jobs:
       - name: Run mlflow project
         working-directory: MLProject
         run: |
-          mlflow run . \ --env-manager=local \ -P n_estimators=100 \ -P max_depth=10 \ -P min_samples_split=2 \ -P min_samples_leaf=1 \ -P data_dir=heart_disease_preprocessing
+          # 6. Run MLflow Project
+      - name: Run mlflow project
+        working-directory: MLProject
+        run: |
+          mlflow run . --env-manager=local -P n_estimators=100 -P max_depth=10 -P min_samples_split=2 -P min_samples_leaf=1 -P data_dir=heart_disease_preprocessing
 
       # 7. Get latest MLflow run_id
       - name: Get latest MLflow run_id
@@ -124,10 +128,7 @@ jobs:
           RUN_ID: ${{ env.RUN_ID }}
         run: |
           if [ -n "$RUN_ID" ]; then
-            mlflow models build-docker \
-              --model-uri "runs:/$RUN_ID/model" \
-              --name "heart-disease-model" \
-              --enable-mlserver
+            mlflow models build-docker --model-uri "runs:/$RUN_ID/model" --name "heart-disease-model" --enable-mlserver
           else
             echo "No run ID found, skipping Docker build"
           fi
@@ -142,11 +143,9 @@ jobs:
       # 12. Tag Docker Image
       - name: Tag Docker Image
         run: |
-          docker tag heart-disease-model \
-            ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
-          docker tag heart-disease-model \
-            ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:${{ github.run_number }}
-
+          docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:latest
+          docker tag heart-disease-model ${{ secrets.DOCKERHUB_USERNAME }}/heart-disease-model:${{ github.run_number }}
+          
       # 13. Push Docker Image
       - name: Push Docker Image
         run: |
