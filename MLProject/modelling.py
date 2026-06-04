@@ -68,76 +68,74 @@ def train(args):
 
     max_depth = None if args.max_depth == "None" else int(args.max_depth)
 
-    # Tentukan eksperimen target
-    mlflow.set_experiment("Heart Disease - CI Pipeline")
+    # Log params
+    mlflow.log_param("n_estimators", args.n_estimators)
+    mlflow.log_param("max_depth", max_depth)
+    mlflow.log_param("min_samples_split", args.min_samples_split)
+    mlflow.log_param("min_samples_leaf", args.min_samples_leaf)
+    mlflow.log_param("random_state", 42)
 
-    # Paksa gunakan nested=True agar aman dijalankan via 'mlflow run .' maupun python langsung
-    with mlflow.start_run(nested=True):
-        # Log params
-        mlflow.log_param("n_estimators", args.n_estimators)
-        mlflow.log_param("max_depth", max_depth)
-        mlflow.log_param("min_samples_split", args.min_samples_split)
-        mlflow.log_param("min_samples_leaf", args.min_samples_leaf)
-        mlflow.log_param("random_state", 42)
+    # Train model
+    model = RandomForestClassifier(
+        n_estimators=args.n_estimators,
+        max_depth=max_depth,
+        min_samples_split=args.min_samples_split,
+        min_samples_leaf=args.min_samples_leaf,
+        random_state=42
+    )
+    model.fit(X_train, y_train)
 
-        # Train model
-        model = RandomForestClassifier(
-            n_estimators=args.n_estimators,
-            max_depth=max_depth,
-            min_samples_split=args.min_samples_split,
-            min_samples_leaf=args.min_samples_leaf,
-            random_state=42
-        )
-        model.fit(X_train, y_train)
+    # Predictions
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1]
 
-        # Predictions
-        y_pred = model.predict(X_test)
-        y_prob = model.predict_proba(X_test)[:, 1]
+    # Metrics
+    metrics = {
+        "accuracy": float(accuracy_score(y_test, y_pred)),
+        "precision": float(precision_score(y_test, y_pred, zero_division=0)),
+        "recall": float(recall_score(y_test, y_pred, zero_division=0)),
+        "f1_score": float(f1_score(y_test, y_pred, zero_division=0)),
+        "roc_auc": float(roc_auc_score(y_test, y_prob)),
+    }
 
-        # Metrics
-        metrics = {
-            "accuracy": float(accuracy_score(y_test, y_pred)),
-            "precision": float(precision_score(y_test, y_pred, zero_division=0)),
-            "recall": float(recall_score(y_test, y_pred, zero_division=0)),
-            "f1_score": float(f1_score(y_test, y_pred, zero_division=0)),
-            "roc_auc": float(roc_auc_score(y_test, y_prob)),
-        }
+    for k, v in metrics.items():
+        mlflow.log_metric(k, v)
+        logger.info(f"  {k}: {v:.4f}")
 
-        for k, v in metrics.items():
-            mlflow.log_metric(k, v)
-            logger.info(f"  {k}: {v:.4f}")
+    # Artifacts
+    os.makedirs("artifacts", exist_ok=True)
+    cm_path = "artifacts/confusion_matrix.png"
+    fi_path = "artifacts/feature_importance.png"
+    report_path = "artifacts/classification_report.txt"
+    metrics_path = "artifacts/metrics.json"
 
-        # Artifacts
-        os.makedirs("artifacts", exist_ok=True)
-        cm_path = "artifacts/confusion_matrix.png"
-        fi_path = "artifacts/feature_importance.png"
-        report_path = "artifacts/classification_report.txt"
-        metrics_path = "artifacts/metrics.json"
+    plot_confusion_matrix(y_test, y_pred, cm_path)
+    plot_feature_importance(model, X_train.columns.tolist(), fi_path)
 
-        plot_confusion_matrix(y_test, y_pred, cm_path)
-        plot_feature_importance(model, X_train.columns.tolist(), fi_path)
+    report = classification_report(y_test, y_pred, target_names=["No Disease", "Disease"])
+    with open(report_path, 'w') as f:
+        f.write(report)
 
-        report = classification_report(y_test, y_pred,
-                                       target_names=["No Disease", "Disease"])
-        with open(report_path, 'w') as f:
-            f.write(report)
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics, f, indent=4)
 
-        with open(metrics_path, 'w') as f:
-            json.dump(metrics, f, indent=4)
+    mlflow.log_artifact(cm_path, "plots")
+    mlflow.log_artifact(fi_path, "plots")
+    mlflow.log_artifact(report_path, "reports")
+    mlflow.log_artifact(metrics_path, "metrics")
 
-        mlflow.log_artifact(cm_path, "plots")
-        mlflow.log_artifact(fi_path, "plots")
-        mlflow.log_artifact(report_path, "reports")
-        mlflow.log_artifact(metrics_path, "metrics")
+    # Log model
+    mlflow.sklearn.log_model(
+        model, "model",
+        registered_model_name="heart-disease-ci"
+    )
 
-        # Log model
-        mlflow.sklearn.log_model(
-            model, "model",
-            registered_model_name="heart-disease-ci"
-        )
-
+    # Ambil Run ID aktif yang disediakan oleh GitHub Actions / MLflow CLI
+    try:
         run_id = mlflow.active_run().info.run_id
         logger.info(f"MLflow Run ID: {run_id}")
+    except Exception:
+        logger.info("Menggunakan automated environment run ID.")
 
     logger.info("Training selesai!")
 
