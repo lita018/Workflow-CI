@@ -68,18 +68,11 @@ def train(args):
 
     max_depth = None if args.max_depth == "None" else int(args.max_depth)
 
-    # Ambil run yang sudah aktif dari 'mlflow run', jika tidak ada baru buat baru
-    active_run = mlflow.active_run()
+    # Tentukan eksperimen target
+    mlflow.set_experiment("Heart Disease - CI Pipeline")
 
-    if active_run:
-        # Jika dipicu oleh mlflow run, langsung gunakan run yang sudah aktif tersebut
-        run_context = active_run
-    else:
-        # Jika dijalankan manual secara lokal (python modelling.py), baru setup eksprimen & buat run baru
-        mlflow.set_experiment("Heart Disease - CI Pipeline")
-        run_context = mlflow.start_run()
-
-    with run_context:
+    # Paksa gunakan nested=True agar aman dijalankan via 'mlflow run .' maupun python langsung
+    with mlflow.start_run(nested=True):
         # Log params
         mlflow.log_param("n_estimators", args.n_estimators)
         mlflow.log_param("max_depth", max_depth)
