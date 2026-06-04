@@ -52,13 +52,7 @@ jobs:
       - name: Run mlflow project
         working-directory: MLProject
         run: |
-          mlflow run . \
-            --env-manager=local \
-            -P n_estimators=100 \
-            -P max_depth=10 \
-            -P min_samples_split=2 \
-            -P min_samples_leaf=1 \
-            -P data_dir=heart_disease_preprocessing
+          mlflow run . \ --env-manager=local \ -P n_estimators=100 \ -P max_depth=10 \ -P min_samples_split=2 \ -P min_samples_leaf=1 \ -P data_dir=heart_disease_preprocessing
 
       # 7. Get latest MLflow run_id
       - name: Get latest MLflow run_id
